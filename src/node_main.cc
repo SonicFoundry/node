@@ -56,8 +56,33 @@ int wmain(int argc, wchar_t *wargv[]) {
       exit(1);
     }
   }
+
+  // check for stderr and stdin redirects...
+  FILE *stdout_redir = NULL;
+  FILE *stderr_redir = NULL;
+
+  for (int i = 0; i < argc; i++) {
+      if (strcmp(argv[i], "--stdout") == 0) {
+          char *redir = argv[++i];
+          stdout_redir = freopen(redir, "a", stdout);
+      } else if (strcmp(argv[i], "--stderr") == 0) {
+          char *redir = argv[++i];
+          stderr_redir = freopen(redir, "a", stderr);
+      }
+  }
+
   // Now that conversion is done, we can finally start.
-  return node::Start(argc, argv);
+  int retval =  node::Start(argc, argv);
+
+  // close stdout and stderr redirects
+  if (stdout_redir) {
+      fclose(stdout_redir);
+  }
+  if (stderr_redir) {
+      fclose(stderr_redir);
+  }
+
+  return retval;
 }
 #else
 // UNIX

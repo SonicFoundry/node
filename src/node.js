@@ -543,58 +543,73 @@
     return e;
   }
 
-  function createWritableStdioStream(fd) {
+  function createWritableStdioStream(fd, name) {
     var stream;
     var tty_wrap = process.binding('tty_wrap');
+    var path;
 
-    // Note stream._type is used for test-module-load-list.js
-
-    switch (tty_wrap.guessHandleType(fd)) {
-      case 'TTY':
-        var tty = NativeModule.require('tty');
-        stream = new tty.WriteStream(fd);
-        stream._type = 'tty';
-
-        // Hack to have stream not keep the event loop alive.
-        // See https://github.com/joyent/node/issues/1726
-        if (stream._handle && stream._handle.unref) {
-          stream._handle.unref();
+    for (var i=0; i < process.argv.length; ++i) {
+        if (process.argv[i] === "--" + name) {
+            path = process.argv[++i];
+            break;
         }
-        break;
+    }
 
-      case 'FILE':
+    if (path) {
         var fs = NativeModule.require('fs');
+        fd = fs.openSync(path, "a");
         stream = new fs.SyncWriteStream(fd);
         stream._type = 'fs';
-        break;
+    } else {
+        // Note stream._type is used for test-module-load-list.js
 
-      case 'PIPE':
-      case 'TCP':
-        var net = NativeModule.require('net');
-        stream = new net.Socket({
-          fd: fd,
-          readable: false,
-          writable: true
-        });
+        switch (tty_wrap.guessHandleType(fd)) {
+          case 'TTY':
+            var tty = NativeModule.require('tty');
+            stream = new tty.WriteStream(fd);
+            stream._type = 'tty';
 
-        // FIXME Should probably have an option in net.Socket to create a
-        // stream from an existing fd which is writable only. But for now
-        // we'll just add this hack and set the `readable` member to false.
-        // Test: ./node test/fixtures/echo.js < /etc/passwd
-        stream.readable = false;
-        stream.read = null;
-        stream._type = 'pipe';
+            // Hack to have stream not keep the event loop alive.
+            // See https://github.com/joyent/node/issues/1726
+            if (stream._handle && stream._handle.unref) {
+              stream._handle.unref();
+            }
+            break;
 
-        // FIXME Hack to have stream not keep the event loop alive.
-        // See https://github.com/joyent/node/issues/1726
-        if (stream._handle && stream._handle.unref) {
-          stream._handle.unref();
+          case 'FILE':
+            var fs = NativeModule.require('fs');
+            stream = new fs.SyncWriteStream(fd);
+            stream._type = 'fs';
+            break;
+
+          case 'PIPE':
+          case 'TCP':
+            var net = NativeModule.require('net');
+            stream = new net.Socket({
+              fd: fd,
+              readable: false,
+              writable: true
+            });
+
+            // FIXME Should probably have an option in net.Socket to create a
+            // stream from an existing fd which is writable only. But for now
+            // we'll just add this hack and set the `readable` member to false.
+            // Test: ./node test/fixtures/echo.js < /etc/passwd
+            stream.readable = false;
+            stream.read = null;
+            stream._type = 'pipe';
+
+            // FIXME Hack to have stream not keep the event loop alive.
+            // See https://github.com/joyent/node/issues/1726
+            if (stream._handle && stream._handle.unref) {
+              stream._handle.unref();
+            }
+            break;
+
+          default:
+            // Probably an error on in uv_guess_handle()
+            throw new Error('Implement me. Unknown stream file type!');
         }
-        break;
-
-      default:
-        // Probably an error on in uv_guess_handle()
-        throw new Error('Implement me. Unknown stream file type!');
     }
 
     // For supporting legacy API we put the FD here.
@@ -610,7 +625,7 @@
 
     process.__defineGetter__('stdout', function() {
       if (stdout) return stdout;
-      stdout = createWritableStdioStream(1);
+      stdout = createWritableStdioStream(1, 'stdout');
       stdout.destroy = stdout.destroySoon = function(er) {
         er = er || new Error('process.stdout cannot be closed.');
         stdout.emit('error', er);
@@ -625,7 +640,7 @@
 
     process.__defineGetter__('stderr', function() {
       if (stderr) return stderr;
-      stderr = createWritableStdioStream(2);
+      stderr = createWritableStdioStream(2, 'stderr');
       stderr.destroy = stderr.destroySoon = function(er) {
         er = er || new Error('process.stderr cannot be closed.');
         stderr.emit('error', er);

@@ -16,6 +16,11 @@ from gyp.common import GetFlavor
 # parse our options
 parser = optparse.OptionParser()
 
+parser.add_option("--target-name",
+    action="store",
+    dest="target_name",
+    help="Sets the final executable name")
+
 parser.add_option("--debug",
     action="store_true",
     dest="debug",
@@ -449,6 +454,8 @@ def configure_node(o):
   o['variables']['node_unsafe_optimizations'] = (
     1 if options.unsafe_optimizations else 0)
   o['default_configuration'] = 'Debug' if options.debug else 'Release'
+
+  o['variables']['node_target_name'] = options.target_name or "node"
 
   host_arch = host_arch_win() if os.name == 'nt' else host_arch_cc()
   target_arch = options.dest_cpu or host_arch

@@ -4,6 +4,7 @@
     # Turn off -Werror in V8
     # See http://codereview.chromium.org/8159015
     'werror': '',
+    'node_target_name': 'node',
     'node_use_dtrace%': 'false',
     'node_use_etw%': 'false',
     'node_use_perfctr%': 'false',
@@ -63,7 +64,7 @@
 
   'targets': [
     {
-      'target_name': 'node',
+      'target_name': '<(node_target_name)',
       'type': 'executable',
 
       'dependencies': [

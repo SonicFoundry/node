@@ -30,6 +30,7 @@
 #include "stream-inl.h"
 #include "req-inl.h"
 
+#include <sddl.h>
 
 /* A zero-size buffer for use by uv_pipe_read */
 static char uv_zero_[] = "";
@@ -398,6 +399,9 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
   uv_loop_t* loop = handle->loop;
   int i, errorno, nameSize;
   uv_pipe_accept_t* req;
+  PSECURITY_DESCRIPTOR psd;
+  SECURITY_ATTRIBUTES sa;
+  CHAR szStringSecDesc[512] = TEXT("D:(A;;GA;;;WD)(A;;GA;;;AN)");
 
   if (handle->flags & UV_HANDLE_BOUND) {
     uv__set_sys_error(loop, WSAEINVAL);
@@ -440,6 +444,13 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
     return -1;
   }
 
+  // allow anonymous and everyone access to the pipe
+  ConvertStringSecurityDescriptorToSecurityDescriptor(szStringSecDesc, SDDL_REVISION_1, &psd, NULL);
+  memset(&sa,0,sizeof(sa));
+  sa.bInheritHandle = FALSE;
+  sa.lpSecurityDescriptor = psd;
+  sa.nLength = sizeof(sa);
+
   /*
    * Attempt to create the first pipe with FILE_FLAG_FIRST_PIPE_INSTANCE.
    * If this fails then there's already a pipe server for the given pipe name.
@@ -448,7 +459,7 @@ int uv_pipe_bind(uv_pipe_t* handle, const char* name) {
       PIPE_ACCESS_DUPLEX | FILE_FLAG_OVERLAPPED |
       FILE_FLAG_FIRST_PIPE_INSTANCE,
       PIPE_TYPE_BYTE | PIPE_READMODE_BYTE | PIPE_WAIT,
-      PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, NULL);
+      PIPE_UNLIMITED_INSTANCES, 65536, 65536, 0, &sa);
 
   if (handle->accept_reqs[0].pipeHandle == INVALID_HANDLE_VALUE) {
     errorno = GetLastError();

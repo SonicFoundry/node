@@ -16,6 +16,7 @@ set config=Release
 set msiplatform=x86
 set target=Build
 set target_arch=ia32
+set target_name=node
 set debug_arg=
 set nosnapshot_arg=
 set noprojgen=
@@ -62,6 +63,7 @@ if /i "%1"=="test"          set test=test&goto arg-ok
 if /i "%1"=="msi"           set msi=1&set licensertf=1&goto arg-ok
 if /i "%1"=="upload"        set upload=1&goto arg-ok
 if /i "%1"=="jslint"        set jslint=1&goto arg-ok
+if /i "%1"=="target-name"   set target_name=%2&shift&goto arg-ok
 
 echo Warning: ignoring invalid command line option `%1`.
 
@@ -89,7 +91,7 @@ if defined NIGHTLY set TAG=nightly-%NIGHTLY%
 @rem Generate the VS project.
 SETLOCAL
   if defined VS100COMNTOOLS call "%VS100COMNTOOLS%\VCVarsQueryRegistry.bat"
-  python configure %debug_arg% %nosnapshot_arg% %noetw_arg% %noperfctr_arg% --dest-cpu=%target_arch% --tag=%TAG%
+  python configure %debug_arg% %nosnapshot_arg% %noetw_arg% %noperfctr_arg% --dest-cpu=%target_arch% --tag=%TAG% --target-name=%target_name%
   if errorlevel 1 goto create-msvs-files-failed
   if not exist node.sln goto create-msvs-files-failed
   echo Project files generated.
